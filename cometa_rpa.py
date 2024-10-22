@@ -56,4 +56,16 @@ wd_chrome.find_element(By.ID, "input-date-return").send_keys(Keys.ENTER)
 time.sleep(2)
 
 wd_chrome.find_element(By.ID, "search-button").click()
-time.sleep(30)
+time.sleep(10)
+
+
+ofertas = wd_chrome.find_elements(By.XPATH, "//li[contains(@data-js, 'offer-element')]")
+for oferta in ofertas:
+    tipo_assento = oferta.find_element(By.XPATH, ".//span[contains(@class, 'classtypeLabel')]").text.strip()
+    preco_inteiro = oferta.find_element(By.XPATH, ".//span[@data-js='priceLabel']").text.strip()
+    preco_decimal = oferta.find_element(By.XPATH, ".//span[@data-js='decimalLabel']").text.strip()
+    preco_completo = f"R${preco_inteiro},{preco_decimal}"
+    print(f"Tipo de assento: {tipo_assento}")
+    print(f"Preço: {preco_completo}\n")
+
+time.sleep(10)
