@@ -96,13 +96,13 @@ for data in datas:
     # Pegar as ofertas de assento e preço
     ofertas = wd_chrome.find_elements(By.XPATH, "//li[contains(@data-js, 'offer-element')]")
     
-    print(f"\n--- Ofertas para o dia {data.strftime('%d/%m/%Y')} ---")
+    print(f"\n---{data.strftime('%d/%m/%Y')}")
     
     for oferta in ofertas:
         tipo_assento = oferta.find_element(By.XPATH, ".//span[contains(@class, 'classtypeLabel')]").text.strip()
         preco_inteiro = oferta.find_element(By.XPATH, ".//span[@data-js='priceLabel']").text.strip()
         preco_decimal = oferta.find_element(By.XPATH, ".//span[@data-js='decimalLabel']").text.strip()
-        preco_completo = f"R${preco_inteiro},{preco_decimal}"
+        preco_completo = f"R${preco_inteiro}{preco_decimal}"
         
         # Imprimindo as informações para o dia atual
         print(f"Tipo de assento: {tipo_assento}")
