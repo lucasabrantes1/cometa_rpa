@@ -8,20 +8,19 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 
-# Obter o diretório onde o script está localizado
-script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Definir o diretório de download como 'raw_data' no mesmo diretório do script
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
 DestinoRelatorio = os.path.join(script_dir, 'raw_data')
 
-# Criar o diretório se não existir
 if not os.path.exists(DestinoRelatorio):
     os.makedirs(DestinoRelatorio)
 
-# Configurações do WebDriver
+# proxy = "187.111.144.102:8080"  
 chrome_option = webdriver.ChromeOptions()
 chrome_option.add_argument('--no-sandbox')
 chrome_option.add_argument('--disable-dev-shm-usage')
+#chrome_option.add_argument(f'--proxy-server={proxy}')
 chrome_option.add_experimental_option("prefs", {
     "download.default_directory": DestinoRelatorio,
     "download.prompt_for_download": False,  
@@ -31,22 +30,18 @@ chrome_option.add_experimental_option("prefs", {
 })
 wd_chrome = webdriver.Chrome(options=chrome_option)
 
-# Função para esperar o loader desaparecer após clicar e esperar 5 segundos
 def wait_for_loader_after_click(driver):
-    time.sleep(5)  # Esperar 5 segundos após clicar
+    time.sleep(2)
     try:
-        # Verificar se o loader aparece
         loader_present = len(driver.find_elements(By.CSS_SELECTOR, "#loader img")) > 0
         if loader_present:
-            # Esperar até que o loader desapareça
-            WebDriverWait(driver, 10).until_not(
+            WebDriverWait(driver, 40).until_not(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "#loader img"))
             )
     except Exception as e:
         print(f"Erro ao esperar o loader desaparecer: {str(e)}")
-    time.sleep(1)  # Esperar 1 segundo adicional
+    time.sleep(1)  
 
-# Lista de rotas
 routes = [
     {"origin": "São Paulo (Rod. Tietê) (SP)", "destination": "Belo Horizonte (MG)"},
     {"origin": "Belo Horizonte (MG)", "destination": "São Paulo (Rod. Tietê) (SP)"},
@@ -55,107 +50,80 @@ routes = [
     {"origin": "São Paulo (Rod. Tietê) (SP)", "destination": "Curitiba (PR)"},
     {"origin": "Rio de Janeiro (Novo Rio) (RJ)", "destination": "Belo Horizonte (MG)"},
     {"origin": "São Paulo (Rod. Barra Funda) (SP)", "destination": "São José do Rio Preto (Rodoviária) (SP)"},
-    {"origin": "Curitiba - Rodoviária (PR)", "destination": "São Paulo (Rod. Tietê) (SP)"},
+    {"origin": "Curitiba (PR)", "destination": "São Paulo (Rod. Tietê) (SP)"},
     {"origin": "São José do Rio Preto (Rodoviária) (SP)", "destination": "São Paulo (Rod. Barra Funda) (SP)"},
     {"origin": "Rio de Janeiro (Novo Rio) (RJ)", "destination": "Campinas (SP)"}
 ]
-
-# Calcular as datas de hoje e os próximos 6 dias
+timestamp = datetime.now().strftime("%d_%m_%Y_%H_%M")
 data_inicial = datetime.today()
 datas = [data_inicial + timedelta(days=i) for i in range(7)]
-
-# Abrindo o site fora do loop para evitar reabrir várias vezes
 url = 'https://www.viacaocometa.com.br/'
 wd_chrome.get(url)
 wd_chrome.set_window_size(1392, 1104)
 
-# Arquivo CSV único para salvar os dados
-csv_filename = os.path.join(DestinoRelatorio, "dados_viacao_cometa.csv")
+csv_filename = os.path.join(DestinoRelatorio, f"dados_viacao_cometa_{timestamp}.csv")
 with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
-    fieldnames = ['Origem', 'Destino', 'Data', 'Tipo de assento', 'Preço', 'Mensagem', 'Timestamp_Scraped']
+    fieldnames = ['Origem', 'Destino', 'Data', 'Tipo de assento', 'Preco', 'Mensagem_rota_indisp', 'Timestamp_Scraped']
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
 
     for route in routes:
         try:
-            # Reiniciar a página para cada rota
             wd_chrome.get(url)
             time.sleep(5)
-            # Não precisa chamar wait_for_loader aqui, pois acabamos de carregar a página
-
-            # Interações para preencher o formulário
-            departure_input = WebDriverWait(wd_chrome, 10).until(
-                EC.element_to_be_clickable((By.ID, "input-departure"))
-            )
+            departure_input = WebDriverWait(wd_chrome, 10).until(EC.element_to_be_clickable((By.ID, "input-departure")))
             departure_input.click()
-            # Após clicar, esperar 5 segundos e verificar o loader
             wait_for_loader_after_click(wd_chrome)
 
             departure_input.clear()
             departure_input.send_keys(route['origin'])
-            time.sleep(1)  # Esperar o dropdown aparecer
+            time.sleep(1)
 
-            # Selecionar a opção de origem
-            dropdown_option = WebDriverWait(wd_chrome, 10).until(
-                EC.element_to_be_clickable((By.XPATH, f"//li[contains(., '{route['origin']}')]"))
-            )
+            dropdown_option = WebDriverWait(wd_chrome, 10).until(EC.element_to_be_clickable((By.XPATH, f"//li[contains(., '{route['origin']}')]")))
             dropdown_option.click()
 
-            # Após clicar, esperar 5 segundos e verificar o loader
+
             wait_for_loader_after_click(wd_chrome)
 
-            # Preencher o destino
             destination_input = wd_chrome.find_element(By.ID, "input-destination")
             destination_input.click()
-
-            # Após clicar, esperar 5 segundos e verificar o loader
             wait_for_loader_after_click(wd_chrome)
 
             destination_input.clear()
             destination_input.send_keys(route['destination'])
-            time.sleep(1)  # Esperar o dropdown aparecer
+            time.sleep(1)
 
-            # Selecionar a opção de destino
-            dropdown_option_dest = WebDriverWait(wd_chrome, 10).until(
-                EC.element_to_be_clickable((By.XPATH, f"//li[contains(., '{route['destination']}')]"))
-            )
+
+            dropdown_option_dest = WebDriverWait(wd_chrome, 10).until(EC.element_to_be_clickable((By.XPATH, f"//li[contains(., '{route['destination']}')]")))
             dropdown_option_dest.click()
-
-            # Após clicar, esperar 5 segundos e verificar o loader
             wait_for_loader_after_click(wd_chrome)
 
-            # Inserir a primeira data no campo de partida
+
             date_input = wd_chrome.find_element(By.ID, "input-date")
             date_input.click()
 
-            # Após clicar, esperar 5 segundos e verificar o loader
-            wait_for_loader_after_click(wd_chrome)
 
+            wait_for_loader_after_click(wd_chrome)
             date_input.clear()
             date_input.send_keys(datas[0].strftime("%d/%m/%Y"))
             date_input.send_keys(Keys.ENTER)
             time.sleep(1)
 
-            # Inserir a última data no campo de retorno
+
             date_return_input = wd_chrome.find_element(By.ID, "input-date-return")
             date_return_input.click()
-
-            # Após clicar, esperar 5 segundos e verificar o loader
             wait_for_loader_after_click(wd_chrome)
 
             date_return_input.clear()
             date_return_input.send_keys(datas[-1].strftime("%d/%m/%Y"))
             date_return_input.send_keys(Keys.ENTER)
             time.sleep(1)
-
-            # Clicar no botão de busca
             search_button = wd_chrome.find_element(By.ID, "search-button")
             search_button.click()
-
-            # Após clicar, esperar o loader e verificar se a mensagem aparece
             wait_for_loader_after_click(wd_chrome)
 
-            # Verificar se a mensagem de "Não existe serviço..." aparece após a busca
+
+            #TODO: Este caso aqui costuma aparecer quando o script roda varias vezes seguidas, caso for rodar em um curto periodo de tempo é necessario implementar a logica do proxy como acredito que esse não seja o objetivo optei pro não implementar, o proxy comentado no webdriver config é grátis e de baixa qualidade podendo afetar o desempenho ou até mesmo nem funcionar.
             try:
                 message_element = wd_chrome.find_element(By.CSS_SELECTOR, "span.message-val[data-js='message-validation']")
                 message_text = message_element.text.strip()
@@ -164,31 +132,28 @@ with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
                     writer.writerow({
                         'Origem': route['origin'],
                         'Destino': route['destination'],
-                        'Data': 'Todas as datas',
+                        'Data': '',
                         'Tipo de assento': '',
-                        'Preço': '',
-                        'Mensagem': message_text,
+                        'Preco': '',
+                        'Mensagem_rota_indisp': message_text,
                         'Timestamp_Scraped': timestamp_scraped
                     })
                     print(f"Mensagem para rota {route['origin']} -> {route['destination']}: {message_text}")
-                    continue  # Ir para a próxima rota
+                    continue
             except:
-                pass  # Se a mensagem não existir, continuar normalmente
+                pass  
 
-            # Agora iterar pelas datas para capturar os preços de cada dia
             for data in datas:
-                # Formatar a data
                 date_str = data.strftime('%d/%m')
                 try:
                     dia_element = WebDriverWait(wd_chrome, 10).until(
                         EC.element_to_be_clickable((By.XPATH, f"//div[@data-js='date' and contains(text(), '{date_str}')]"))
                     )
+                    time.sleep(3)
                     dia_element.click()
-
-                    # Após clicar, esperar 5 segundos e verificar o loader
+                    time.sleep(3)
                     wait_for_loader_after_click(wd_chrome)
 
-                    # Verificar se a mensagem aparece após selecionar a data
                     try:
                         message_element = wd_chrome.find_element(By.CSS_SELECTOR, "span.message-val[data-js='message-validation']")
                         message_text = message_element.text.strip()
@@ -199,24 +164,20 @@ with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
                                 'Destino': route['destination'],
                                 'Data': data.strftime('%d/%m/%Y'),
                                 'Tipo de assento': '',
-                                'Preço': '',
-                                'Mensagem': message_text,
+                                'Preco': '',
+                                'Mensagem_rota_indisp': message_text,
                                 'Timestamp_Scraped': timestamp_scraped
                             })
                             print(f"Mensagem na data {data.strftime('%d/%m/%Y')} para rota {route['origin']} -> {route['destination']}: {message_text}")
-                            continue  # Ir para a próxima data
+                            continue 
                     except:
-                        pass  # Se a mensagem não existir, continuar normalmente
+                        pass  
 
-                    # Esperar até que as ofertas estejam presentes
                     WebDriverWait(wd_chrome, 10).until(
                         EC.presence_of_all_elements_located((By.XPATH, "//li[contains(@data-js, 'offer-element')]"))
                     )
                 
-                    # Pegar as ofertas de assento e preço
                     ofertas = wd_chrome.find_elements(By.XPATH, "//li[contains(@data-js, 'offer-element')]")
-                    
-                    # Coletar e escrever as informações no arquivo CSV
                     for oferta in ofertas:
                         try:
                             tipo_assento = oferta.find_element(By.XPATH, ".//span[contains(@class, 'classtypeLabel')]").text.strip()
@@ -225,15 +186,13 @@ with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
                             preco_completo = f"R${preco_inteiro}{preco_decimal}"
                             
                             timestamp_scraped = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            # Escrever as informações no arquivo CSV
                             writer.writerow({
                                 'Origem': route['origin'],
                                 'Destino': route['destination'],
                                 'Data': data.strftime('%d/%m/%Y'),
                                 'Tipo de assento': tipo_assento,
-                                'Preço': preco_completo,
-                                'Mensagem': '',
+                                'Preco': preco_completo,
+                                'Mensagem_rota_indisp': '',
                                 'Timestamp_Scraped': timestamp_scraped
                             })
                         except Exception as e:
@@ -241,11 +200,8 @@ with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
                 except Exception as e:
                     print(f"Erro ao selecionar data {date_str} para rota {route['origin']} -> {route['destination']}: {str(e)}")
                     continue
-            # Esperar antes de processar a próxima rota
             time.sleep(2)
         except Exception as e:
             print(f"Erro ao processar rota {route['origin']} -> {route['destination']}: {str(e)}")
             continue
-
-# Fechar o navegador
 wd_chrome.quit()
